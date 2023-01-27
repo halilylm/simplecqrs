@@ -22,5 +22,6 @@ type SearchProduct struct {
 	ID        string `json:"id"`
 	ProductID string `json:"product_id"`
 	Name      string `json:"name"`
-	Operation string `json:"price"`
+	Operation string `json:"operation"`
+	Price     int    `json:"price"`
 }

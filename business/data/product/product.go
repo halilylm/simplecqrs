@@ -2,6 +2,7 @@
 package product
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -10,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"go.opentelemetry.io/otel"
-	"strings"
+	"log"
 	"time"
 )
 
@@ -98,22 +99,38 @@ func Delete(ctx context.Context, db *sqlx.DB, id string) error {
 func Search(ctx context.Context, db *elasticsearch.Client, query string) ([]SearchProduct, error) {
 	ctx, span := otel.Tracer("service").Start(ctx, "business.data.product.search")
 	defer span.End()
-	body := fmt.Sprintf(
-		`{"query": {"multi_match": {"query": "%s", "fields": ["name"]}}}`,
-		query)
+	var buf bytes.Buffer
+	searchQuery := map[string]any{
+		"query": map[string]interface{}{
+			"match": map[string]interface{}{
+				"name": query,
+			},
+		},
+	}
+	if err := json.NewEncoder(&buf).Encode(searchQuery); err != nil {
+		log.Fatalf("Error encoding query: %s", err)
+	}
 	res, err := db.Search(
 		db.Search.WithContext(ctx),
 		db.Search.WithIndex("products"),
-		db.Search.WithBody(strings.NewReader(body)),
+		db.Search.WithBody(&buf),
 		db.Search.WithPretty(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("searching product: %w", err)
 	}
 	defer res.Body.Close()
-	var products []SearchProduct
+	var products map[string]any
+	var searchProducts []SearchProduct
 	if err := json.NewDecoder(res.Body).Decode(&products); err != nil {
 		return nil, fmt.Errorf("decoding products: %w", err)
 	}
-	return products, nil
+	for _, hit := range products["hits"].(map[string]any)["hits"].([]any) {
+		var searchProduct SearchProduct
+		prod := hit.(map[string]interface{})["_source"]
+		prodByte, _ := json.Marshal(prod)
+		_ = json.Unmarshal(prodByte, &searchProduct)
+		searchProducts = append(searchProducts, searchProduct)
+	}
+	return searchProducts, nil
 }
