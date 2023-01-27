@@ -1,0 +1,55 @@
+version: "3"
+
+services:
+  postgres:
+    image: postgres
+    restart: unless-stopped
+    hostname: postgres
+    env_file: .env
+    ports:
+      - "5432:5432"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    hostname: api
+    env_file: .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - elasticsearch
+
+  elasticsearch:
+    image: 'elasticsearch:7.17.7'
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "6831:6831/udp"
+      - "16686:16686"
+
+  kibana:
+    image: 'kibana:7.17.7'
+    ports:
+      - "5601:5601"
+    hostname: kibana
+    depends_on:
+      - elasticsearch
+  logstash:
+    build:
+      context: logstash
+    env_file: .env
+    volumes:
+      - ./logstash/config/pipelines.yml:/usr/share/logstash/config/pipelines.yml
+      - ./logstash/pipeline/:/usr/share/logstash/pipeline/
+      - ./logstash/queries/:/usr/share/logstash/config/queries/
+    depends_on:
+      - postgres
+      - elasticsearch

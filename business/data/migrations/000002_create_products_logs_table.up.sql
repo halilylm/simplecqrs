@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS products_logs (
+    id SERIAL PRIMARY KEY,
+    product_id UUID NOT NULL,
+    operation VARCHAR(20) NOT NULL,
+    date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
