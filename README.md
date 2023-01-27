@@ -1,7 +1,7 @@
 
 # Simple CQRS(Mimic)
 
-However, write and query services are coupled, only queries are decoupled on the same service. Postgresql and Elasticsearch are being synced via Logstash.
+However, command and query services are coupled, only queries are decoupled on the same service. Postgresql and Elasticsearch are being synced via Logstash.
 
 
 ## Usage
